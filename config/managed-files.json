@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "base": [
+    { "source": "templates/core/.editorconfig", "target": ".editorconfig", "policy": "managed" },
+    { "source": "templates/core/.gitattributes", "target": ".gitattributes", "policy": "managed" },
+    { "source": "templates/core/README.md.tpl", "target": "README.md", "policy": "create" },
+    { "source": "templates/core/AGENTS.md.tpl", "target": "AGENTS.md", "policy": "create" },
+    { "source": "templates/core/CONTRIBUTING.md", "target": "CONTRIBUTING.md", "policy": "create" },
+    { "source": "templates/core/SECURITY.md", "target": "SECURITY.md", "policy": "create" },
+    { "source": "templates/core/.github/CODEOWNERS.tpl", "target": ".github/CODEOWNERS", "policy": "create" },
+    { "source": "templates/core/.github/PULL_REQUEST_TEMPLATE.md", "target": ".github/PULL_REQUEST_TEMPLATE.md", "policy": "managed" },
+    { "source": "templates/core/.github/ISSUE_TEMPLATE/bug.yml", "target": ".github/ISSUE_TEMPLATE/bug.yml", "policy": "managed" },
+    { "source": "templates/core/.github/ISSUE_TEMPLATE/feature.yml", "target": ".github/ISSUE_TEMPLATE/feature.yml", "policy": "managed" },
+    { "source": "templates/core/.github/ISSUE_TEMPLATE/config.yml", "target": ".github/ISSUE_TEMPLATE/config.yml", "policy": "managed" }
+  ],
+  "profiles": {
+    "generic": [
+      { "source": "profiles/generic/overlay/.gitignore", "target": ".gitignore", "policy": "managed" },
+      { "source": "profiles/generic/overlay/.github/dependabot.yml", "target": ".github/dependabot.yml", "policy": "managed" },
+      { "source": "profiles/generic/overlay/.github/workflows/ci.yml", "target": ".github/workflows/ci.yml", "policy": "managed" },
+      { "source": "profiles/generic/overlay/scripts/verify.ps1", "target": "scripts/verify.ps1", "policy": "managed" },
+      { "source": "profiles/generic/overlay/src/.gitkeep", "target": "src/.gitkeep", "policy": "create" },
+      { "source": "profiles/generic/overlay/tests/.gitkeep", "target": "tests/.gitkeep", "policy": "create" }
+    ],
+    "node": [
+      { "source": "profiles/node/overlay/.gitignore", "target": ".gitignore", "policy": "managed" },
+      { "source": "profiles/node/overlay/package.json.tpl", "target": "package.json", "policy": "create" },
+      { "source": "profiles/node/overlay/package-lock.json.tpl", "target": "package-lock.json", "policy": "create" },
+      { "source": "profiles/node/overlay/src/index.js", "target": "src/index.js", "policy": "create" },
+      { "source": "profiles/node/overlay/test/index.test.js", "target": "test/index.test.js", "policy": "create" },
+      { "source": "profiles/node/overlay/.github/dependabot.yml", "target": ".github/dependabot.yml", "policy": "managed" },
+      { "source": "profiles/node/overlay/.github/workflows/ci.yml", "target": ".github/workflows/ci.yml", "policy": "managed" },
+      { "source": "profiles/node/overlay/scripts/verify.ps1", "target": "scripts/verify.ps1", "policy": "managed" }
+    ],
+    "python": [
+      { "source": "profiles/python/overlay/.gitignore", "target": ".gitignore", "policy": "managed" },
+      { "source": "profiles/python/overlay/pyproject.toml.tpl", "target": "pyproject.toml", "policy": "create" },
+      { "source": "profiles/python/overlay/src/__PACKAGE__/__init__.py", "target": "src/__PACKAGE__/__init__.py", "policy": "create" },
+      { "source": "profiles/python/overlay/tests/test_smoke.py.tpl", "target": "tests/test_smoke.py", "policy": "create" },
+      { "source": "profiles/python/overlay/.github/dependabot.yml", "target": ".github/dependabot.yml", "policy": "managed" },
+      { "source": "profiles/python/overlay/.github/workflows/ci.yml", "target": ".github/workflows/ci.yml", "policy": "managed" },
+      { "source": "profiles/python/overlay/scripts/verify.ps1.tpl", "target": "scripts/verify.ps1", "policy": "managed" }
+    ]
+  }
+}

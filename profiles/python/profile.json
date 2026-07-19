@@ -1,0 +1,5 @@
+{
+  "name": "python",
+  "runtime": "python >=3.10",
+  "dependabotEcosystems": ["github-actions", "pip"]
+}

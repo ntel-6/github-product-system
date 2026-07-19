@@ -1,0 +1,13 @@
+{
+  "verifiedOn": "2026-07-19",
+  "personalFree": {
+    "templateRepository": { "public": true, "private": true },
+    "actions": { "public": true, "privateMinutesPerMonth": 2000 },
+    "dependabot": { "public": true, "private": true },
+    "rulesets": { "public": true, "private": false },
+    "protectedBranches": { "public": true, "private": false },
+    "environments": { "public": true, "private": false },
+    "codeql": { "public": true, "private": false },
+    "pages": { "public": true, "private": false }
+  }
+}

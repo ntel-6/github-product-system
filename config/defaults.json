@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "destination": "..",
+  "visibility": "private",
+  "license": "none",
+  "nodeMajor": 24,
+  "pythonMinor": "3.13",
+  "runner": "ubuntu-latest",
+  "githubOwner": "ntel-6"
+}

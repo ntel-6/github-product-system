@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "requiredCore": [
+    ".product-system.json",
+    ".editorconfig",
+    ".gitattributes",
+    ".gitignore",
+    "README.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    ".github/CODEOWNERS",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/ISSUE_TEMPLATE/bug.yml",
+    ".github/ISSUE_TEMPLATE/feature.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/dependabot.yml",
+    ".github/workflows/ci.yml",
+    "scripts/verify.ps1"
+  ],
+  "requiredByProfile": {
+    "generic": ["src/.gitkeep", "tests/.gitkeep"],
+    "node": ["package.json", "package-lock.json", "src/index.js", "test/index.test.js"],
+    "python": ["pyproject.toml", "tests/test_smoke.py"]
+  },
+  "blockedFileNames": [".env", ".env.local", "id_rsa", "id_ed25519"],
+  "blockedExtensions": [".pem", ".pfx", ".p12", ".key"],
+  "warnFileSizeBytes": 26214400,
+  "failFileSizeBytes": 52428800,
+  "allowedProfiles": ["generic", "node", "python"],
+  "allowedLicenses": ["none", "MIT", "Apache-2.0"]
+}

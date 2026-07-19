@@ -1,0 +1,5 @@
+{
+  "name": "generic",
+  "runtime": "none",
+  "dependabotEcosystems": ["github-actions"]
+}

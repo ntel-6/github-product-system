@@ -1,0 +1,5 @@
+{
+  "name": "node",
+  "runtime": "node >=20",
+  "dependabotEcosystems": ["github-actions", "npm"]
+}
