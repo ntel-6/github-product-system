@@ -74,7 +74,7 @@ try {
 
     $unpinned = & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name 'unpinned-action' -Profile generic -Destination $tempRoot
     $workflow = Join-Path $unpinned.Path '.github/workflows/ci.yml'
-    $workflowText = (Get-Content -LiteralPath $workflow -Raw).Replace('actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683', 'actions/checkout@v4')
+    $workflowText = (Get-Content -LiteralPath $workflow -Raw).Replace('actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0', 'actions/checkout@v7')
     Write-Utf8NoBom -Path $workflow -Content $workflowText
     $unpinnedAudit = & (Join-Path $systemRoot 'scripts/audit.ps1') -Path $unpinned.Path -SkipRuntime -PassThru
     Assert-False $unpinnedAudit.Valid 'unpinned action must fail audit'
