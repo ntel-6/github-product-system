@@ -5,7 +5,10 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$candidates = @('python3', 'py', 'python', (Join-Path $env:USERPROFILE 'AI_Library\.venv\Scripts\python.exe'))
+$candidates = @('python3', 'py', 'python')
+if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+    $candidates += Join-Path $env:USERPROFILE 'AI_Library\.venv\Scripts\python.exe'
+}
 $python = $null
 $prefix = @()
 
