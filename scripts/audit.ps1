@@ -70,7 +70,7 @@ if ($manifest) {
     }
 }
 
-$allFiles = @(Get-ChildItem -LiteralPath $productRoot -File -Recurse | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })
+$allFiles = @(Get-ChildItem -LiteralPath $productRoot -File -Recurse -Force | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })
 
 foreach ($jsonFile in @($allFiles | Where-Object { $_.Extension -eq '.json' })) {
     try {
@@ -118,7 +118,7 @@ foreach ($file in $allFiles) {
 
 $workflowRoot = Join-Path $productRoot '.github/workflows'
 if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
-    foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
+    foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File -Force | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
         $yaml = Get-Content -LiteralPath $workflow.FullName -Raw
         if ($yaml -match '(?m)^\s*pull_request_target\s*:') {
             Add-Check 'FAIL' 'workflow.trigger' "pull_request_target is forbidden: $($workflow.Name)"

@@ -21,7 +21,7 @@ foreach ($relative in $required) {
 $manifestPath = Join-Path $root '.product-system.json'
 $null = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 
-$unresolved = Get-ChildItem -LiteralPath $root -File -Recurse |
+$unresolved = Get-ChildItem -LiteralPath $root -File -Recurse -Force |
     Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' } |
     Select-String -Pattern '\{\{[A-Z0-9_]+\}\}' -List
 

@@ -43,7 +43,13 @@ function Resolve-SafeChildPath {
     $base = [System.IO.Path]::GetFullPath($BasePath).TrimEnd([char[]]@('\', '/'))
     $child = [System.IO.Path]::GetFullPath((Join-Path $base $RelativePath))
     $prefix = $base + [System.IO.Path]::DirectorySeparatorChar
-    if (-not $child.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $comparison = if ([System.IO.Path]::DirectorySeparatorChar -eq '\') {
+        [System.StringComparison]::OrdinalIgnoreCase
+    }
+    else {
+        [System.StringComparison]::Ordinal
+    }
+    if (-not $child.StartsWith($prefix, $comparison)) {
         throw "Path escapes the allowed root: $RelativePath"
     }
     return $child
@@ -52,7 +58,7 @@ function Resolve-SafeChildPath {
 function Assert-ValidProductName {
     param([Parameter(Mandatory = $true)][string]$Name)
 
-    if ($Name -notmatch '^[a-z][a-z0-9-]{0,61}[a-z0-9]$') {
+    if ($Name -cnotmatch '^[a-z][a-z0-9-]{0,61}[a-z0-9]$') {
         throw "Product name must be 2-63 lowercase characters: letters, digits, and internal hyphens."
     }
 
@@ -104,9 +110,15 @@ function Get-ManagedEntries {
 function Get-PortableTool {
     param([Parameter(Mandatory = $true)][ValidateSet('git', 'gh')][string]$Name)
 
-    $commandName = if ($Name -eq 'git') { 'git.exe' } else { 'gh.exe' }
-    $command = Get-Command $commandName -ErrorAction SilentlyContinue
-    if ($command) { return $command.Source }
+    $commandNames = if ($Name -eq 'git') { @('git.exe', 'git') } else { @('gh.exe', 'gh') }
+    foreach ($commandName in $commandNames) {
+        $command = Get-Command $commandName -ErrorAction SilentlyContinue
+        if ($command) { return $command.Source }
+    }
+
+    if ([System.IO.Path]::DirectorySeparatorChar -ne '\' -or [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        return $null
+    }
 
     $libraryRoot = Join-Path $env:USERPROFILE 'AI_Library\tools'
     $toolingManifestPath = Join-Path $libraryRoot 'github-tooling.json'
@@ -148,7 +160,7 @@ function Get-TreeContentMap {
 
     $root = [System.IO.Path]::GetFullPath($Path).TrimEnd([char[]]@('\', '/'))
     $map = [ordered]@{}
-    Get-ChildItem -LiteralPath $root -File -Recurse |
+    Get-ChildItem -LiteralPath $root -File -Recurse -Force |
         Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' } |
         Sort-Object FullName |
         ForEach-Object {

@@ -43,6 +43,8 @@ try {
     }
 
     Assert-Throws { & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name '..\escape' -Destination $tempRoot } 'path traversal name'
+    Assert-Throws { & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name '../escape' -Destination $tempRoot } 'POSIX path traversal name'
+    Assert-Throws { & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name 'Uppercase' -Destination $tempRoot } 'uppercase product name'
     Assert-Throws { & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name 'CON' -Destination $tempRoot } 'Windows reserved name'
     Assert-Throws { & (Join-Path $systemRoot 'scripts/bootstrap.ps1') -Name 'public-no-license' -Destination $tempRoot -Visibility public } 'public product without license'
 
