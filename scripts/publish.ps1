@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Path,
     [string]$Owner = 'ntel-6',
     [ValidateSet('private', 'public')][string]$Visibility = 'private',
-    [switch]$TemplateRepository
+    [switch]$TemplateRepository,
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,99}$')][string]$RequiredCheck = 'verify'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -103,10 +104,38 @@ if ($TemplateRepository) {
     if ($LASTEXITCODE -ne 0) { throw 'Could not mark the repository as a template.' }
 }
 
+$branchProtectionEnabled = $false
+if ($Visibility -eq 'public') {
+    $protection = [ordered]@{
+        required_status_checks = [ordered]@{
+            strict = $true
+            checks = @([ordered]@{ context = $RequiredCheck; app_id = 15368 })
+        }
+        enforce_admins = $true
+        required_pull_request_reviews = [ordered]@{
+            dismiss_stale_reviews = $true
+            require_code_owner_reviews = $false
+            required_approving_review_count = 0
+            require_last_push_approval = $false
+        }
+        restrictions = $null
+        required_linear_history = $true
+        allow_force_pushes = $false
+        allow_deletions = $false
+        required_conversation_resolution = $true
+        lock_branch = $false
+    }
+    ($protection | ConvertTo-Json -Depth 6 -Compress) |
+        & $gh api --method PUT "repos/$fullName/branches/main/protection" --input -
+    if ($LASTEXITCODE -ne 0) { throw 'Public main branch protection setup failed.' }
+    $branchProtectionEnabled = $true
+}
+
 Write-Host "PASS: published https://github.com/$fullName"
 [pscustomobject]@{
     Repository = $fullName
     Url = "https://github.com/$fullName"
     Visibility = $Visibility
     TemplateRepository = [bool]$TemplateRepository
+    BranchProtection = $branchProtectionEnabled
 }

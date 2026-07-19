@@ -37,3 +37,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish.ps1 `
 ```
 
 Скрипт сначала проверяет продукт, `gh auth` и точный target. Публикация никогда не является скрытым побочным эффектом генерации.
+
+Для public-продукта скрипт также защищает `main`: изменения только через pull request, обязательный GitHub Actions check `verify`, актуальная ветка, линейная история и запрет force-push/удаления. Для private-репозиториев на личном GitHub Free этот шаг пропускается из-за ограничения тарифа.
