@@ -243,3 +243,5 @@ finally {
         }
     }
 }
+
+$global:LASTEXITCODE = 0
