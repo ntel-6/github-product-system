@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 param(
     [Parameter(Mandatory = $true)][string]$Path,
-    [string]$Owner = 'ntel-6',
+    [string]$Owner,
     [ValidateSet('private', 'public')][string]$Visibility = 'private',
     [switch]$TemplateRepository,
     [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,99}$')][string]$RequiredCheck = 'verify'
@@ -18,6 +18,7 @@ if (-not $audit.Valid) { throw 'Product audit failed; publication is blocked.' }
 $manifest = Read-JsonFile -Path (Join-Path $productRoot '.product-system.json')
 $slug = [string]$manifest.name
 Assert-ValidProductName -Name $slug
+$Owner = Resolve-PublishOwner -ManifestOwner ([string]$manifest.githubOwner) -RequestedOwner $Owner
 $fullName = "$Owner/$slug"
 
 if ([string]$manifest.visibility -ne $Visibility) {
@@ -46,6 +47,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $productRoot '.git') -PathType Conta
     if ($LASTEXITCODE -ne 0) { throw 'git init failed.' }
 }
 
+Assert-GitMainBranch -Git $git -RepositoryPath $productRoot
+
 $gitName = (& $git -C $productRoot config user.name 2>$null | Out-String).Trim()
 $gitEmail = (& $git -C $productRoot config user.email 2>$null | Out-String).Trim()
 if (-not $gitName -or -not $gitEmail) {
@@ -60,6 +63,8 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { throw 'Initial commit failed.' }
 }
 
+Assert-CleanGitWorktree -Git $git -RepositoryPath $productRoot
+
 $visibilityFlag = if ($Visibility -eq 'public') { '--public' } else { '--private' }
 & $gh repo create $fullName $visibilityFlag --source $productRoot --remote origin --push
 if ($LASTEXITCODE -ne 0) { throw 'GitHub repository creation or push failed.' }
@@ -70,7 +75,12 @@ if ($LASTEXITCODE -ne 0) { throw 'GitHub repository creation or push failed.' }
     -F delete_branch_on_merge=true `
     -F allow_squash_merge=true `
     -F allow_merge_commit=false `
-    -F allow_rebase_merge=false
+    -F allow_rebase_merge=false `
+    -F allow_auto_merge=true `
+    -F allow_update_branch=true `
+    -F use_squash_pr_title_as_default=true `
+    -f squash_merge_commit_title=PR_TITLE `
+    -f squash_merge_commit_message=PR_BODY
 if ($LASTEXITCODE -ne 0) { throw 'Repository settings update failed.' }
 
 & $gh repo edit $fullName --add-topic product-system --add-topic ([string]$manifest.profile)
@@ -94,6 +104,12 @@ foreach ($label in $labels) {
     -F can_approve_pull_request_reviews=false
 if ($LASTEXITCODE -ne 0) { throw 'Default workflow permission setup failed.' }
 
+& $gh api --method PUT "repos/$fullName/actions/permissions" `
+    -F enabled=true `
+    -f allowed_actions=all `
+    -F sha_pinning_required=true
+if ($LASTEXITCODE -ne 0) { throw 'GitHub Actions SHA pinning setup failed.' }
+
 & $gh api --method PUT "repos/$fullName/vulnerability-alerts"
 if ($LASTEXITCODE -ne 0) { throw 'Dependabot alerts setup failed.' }
 & $gh api --method PUT "repos/$fullName/automated-security-fixes"
@@ -106,6 +122,19 @@ if ($TemplateRepository) {
 
 $branchProtectionEnabled = $false
 if ($Visibility -eq 'public') {
+    & $gh api --method PUT "repos/$fullName/private-vulnerability-reporting"
+    if ($LASTEXITCODE -ne 0) { throw 'Private vulnerability reporting setup failed.' }
+
+    $securitySettings = [ordered]@{
+        security_and_analysis = [ordered]@{
+            secret_scanning = [ordered]@{ status = 'enabled' }
+            secret_scanning_push_protection = [ordered]@{ status = 'enabled' }
+        }
+    }
+    ($securitySettings | ConvertTo-Json -Depth 4 -Compress) |
+        & $gh api --method PATCH "repos/$fullName" --input -
+    if ($LASTEXITCODE -ne 0) { throw 'Secret scanning and push protection setup failed.' }
+
     $protection = [ordered]@{
         required_status_checks = [ordered]@{
             strict = $true

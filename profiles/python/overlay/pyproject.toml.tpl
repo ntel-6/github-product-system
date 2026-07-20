@@ -2,7 +2,7 @@
 name = "{{PRODUCT_NAME}}"
 version = "0.1.0"
 description = "{{DISPLAY_NAME}}"
-requires-python = ">=3.10"
+requires-python = ">={{PYTHON_MINOR}}"
 dependencies = []
 
 [build-system]

@@ -13,7 +13,26 @@ $systemRoot = Get-ProductSystemRoot
 $productRoot = [System.IO.Path]::GetFullPath($Path)
 $manifestPath = Join-Path $productRoot '.product-system.json'
 $manifest = Read-JsonFile -Path $manifestPath
-$currentVersion = (Get-Content -LiteralPath (Join-Path $systemRoot 'VERSION') -Raw).Trim()
+$currentVersion = (Get-Content -LiteralPath (Join-Path $systemRoot 'VERSION') -Raw -Encoding UTF8).Trim()
+$defaults = Read-JsonFile -Path (Join-Path $systemRoot 'config/defaults.json')
+
+function Get-ManifestSetting {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)]$DefaultValue
+    )
+
+    $property = $manifest.PSObject.Properties[$Name]
+    if ($property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+        return $property.Value
+    }
+    return $DefaultValue
+}
+
+$runner = [string](Get-ManifestSetting -Name 'runner' -DefaultValue $defaults.runner)
+$nodeMajor = [int](Get-ManifestSetting -Name 'nodeMajor' -DefaultValue $defaults.nodeMajor)
+$pythonMinor = [string](Get-ManifestSetting -Name 'pythonMinor' -DefaultValue $defaults.pythonMinor)
+Assert-ValidRuntimeSettings -Runner $runner -NodeMajor $nodeMajor -PythonMinor $pythonMinor
 
 $tokens = @{
     '{{SYSTEM_VERSION}}' = $currentVersion
@@ -24,6 +43,9 @@ $tokens = @{
     '{{LICENSE}}' = [string]$manifest.license
     '{{GITHUB_OWNER}}' = [string]$manifest.githubOwner
     '{{PYTHON_PACKAGE}}' = [string]$manifest.pythonPackage
+    '{{RUNNER}}' = $runner
+    '{{NODE_MAJOR}}' = $nodeMajor.ToString()
+    '{{PYTHON_MINOR}}' = $pythonMinor
     '{{COPYRIGHT_YEAR}}' = [DateTime]::UtcNow.Year.ToString()
     '__PACKAGE__' = [string]$manifest.pythonPackage
 }
@@ -35,8 +57,8 @@ foreach ($entry in (Get-ManagedEntries -Profile ([string]$manifest.profile))) {
     $source = Resolve-SafeChildPath -BasePath $systemRoot -RelativePath ([string]$entry.source)
     $relativeTarget = Expand-TemplateText -Text ([string]$entry.target) -Tokens $tokens
     $target = Resolve-SafeChildPath -BasePath $productRoot -RelativePath $relativeTarget
-    $expected = Expand-TemplateText -Text (Get-Content -LiteralPath $source -Raw) -Tokens $tokens
-    $actual = if (Test-Path -LiteralPath $target -PathType Leaf) { Get-Content -LiteralPath $target -Raw } else { $null }
+    $expected = Expand-TemplateText -Text (Get-Content -LiteralPath $source -Raw -Encoding UTF8) -Tokens $tokens
+    $actual = if (Test-Path -LiteralPath $target -PathType Leaf) { Get-Content -LiteralPath $target -Raw -Encoding UTF8 } else { $null }
 
     if ($actual -ne $expected) {
         $status = if ($null -eq $actual) { 'missing' } else { 'changed' }
@@ -51,6 +73,15 @@ if ($Apply) {
     $versionProperty = $manifest.PSObject.Properties['systemVersion']
     if ($versionProperty) { $versionProperty.Value = $currentVersion }
     else { $manifest | Add-Member -NotePropertyName systemVersion -NotePropertyValue $currentVersion }
+    foreach ($setting in @(
+        @{ Name = 'runner'; Value = $runner },
+        @{ Name = 'nodeMajor'; Value = $nodeMajor },
+        @{ Name = 'pythonMinor'; Value = $pythonMinor }
+    )) {
+        $property = $manifest.PSObject.Properties[[string]$setting.Name]
+        if ($property) { $property.Value = $setting.Value }
+        else { $manifest | Add-Member -NotePropertyName ([string]$setting.Name) -NotePropertyValue $setting.Value }
+    }
     Write-Utf8NoBom -Path $manifestPath -Content (($manifest | ConvertTo-Json -Depth 6) + "`n")
 
     $audit = & (Join-Path $PSScriptRoot 'audit.ps1') -Path $productRoot -SkipRuntime -PassThru

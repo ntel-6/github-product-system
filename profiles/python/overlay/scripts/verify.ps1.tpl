@@ -13,16 +13,40 @@ $python = $null
 $prefix = @()
 
 foreach ($candidate in $candidates) {
+    $candidatePython = $null
+    $candidatePrefix = @()
     if ($candidate -eq 'py') {
         $command = Get-Command py -ErrorAction SilentlyContinue
-        if ($command) { $python = $command.Source; $prefix = @('-3'); break }
+        if ($command) { $candidatePython = $command.Source; $candidatePrefix = @('-3') }
     }
     elseif ([System.IO.Path]::IsPathRooted($candidate)) {
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $python = $candidate; break }
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $candidatePython = $candidate }
     }
     else {
         $command = Get-Command $candidate -ErrorAction SilentlyContinue
-        if ($command) { $python = $command.Source; break }
+        if ($command) { $candidatePython = $command.Source }
+    }
+
+    if ($candidatePython) {
+        $probe = $null
+        $probeExitCode = 1
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'SilentlyContinue'
+            $probe = & $candidatePython @candidatePrefix -c "import sys; print(sys.version_info.major)" 2>$null
+            $probeExitCode = $LASTEXITCODE
+        }
+        catch {
+            $probeExitCode = 1
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($probeExitCode -eq 0 -and ($probe | Out-String).Trim() -eq '3') {
+            $python = $candidatePython
+            $prefix = $candidatePrefix
+            break
+        }
     }
 }
 

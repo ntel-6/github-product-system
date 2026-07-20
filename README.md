@@ -9,6 +9,7 @@
 - pull request template и формы bug/feature;
 - минимальные GitHub Actions permissions;
 - CI с отменой устаревших запусков и лимитом времени;
+- единые версии runner, Node.js и Python из `config/defaults.json`;
 - Dependabot для Actions и выбранной экосистемы;
 - проверка незаменённых токенов, опасных файлов, крупных файлов и незакреплённых actions;
 - отдельный publish-скрипт: сеть и GitHub никогда не вызываются скрытно из bootstrap.
@@ -48,13 +49,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\sync.ps1 `
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\run.ps1
 ```
 
+## Настройки по умолчанию
+
+Файл `config/defaults.json` задаёт каталог назначения, видимость, лицензию, владельца GitHub, runner и версии Node.js/Python. Эти значения реально попадают в manifest и CI каждого нового продукта; параметры `bootstrap.ps1` имеют приоритет над defaults.
+
 ## Профили
 
-| Профиль | Для чего | Проверка без скачиваний |
+| Профиль | Для чего | Базовая проверка |
 |---|---|---|
 | `generic` | документы, прототипы, нестандартный стек | структура и целостность репозитория |
-| `node` | Node.js-библиотека или сервис | `npm ci`, `node --check`, `node --test` |
-| `python` | Python-библиотека или сервис | `compileall`, стандартный `unittest` |
+| `node` | Node.js-библиотека или сервис | setup заданной версии, `npm ci`, syntax check, `node --test` |
+| `python` | Python-библиотека или сервис | setup заданной версии, editable install, syntax check, `unittest` |
 
 ## Публичные продукты
 

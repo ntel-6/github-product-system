@@ -5,7 +5,7 @@
   "description": "{{DISPLAY_NAME}}",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">={{NODE_MAJOR}}"
   },
   "scripts": {
     "check": "node --check src/index.js",

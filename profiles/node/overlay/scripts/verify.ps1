@@ -15,6 +15,8 @@ if (-not $node -or -not $npm) {
 
 Push-Location $root
 try {
+    & $npm.Source ci --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { throw "npm ci failed with exit code $LASTEXITCODE" }
     & $npm.Source run verify
     if ($LASTEXITCODE -ne 0) { throw "npm run verify failed with exit code $LASTEXITCODE" }
 }
