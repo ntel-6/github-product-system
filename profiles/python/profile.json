@@ -1,5 +1,5 @@
 {
   "name": "python",
-  "runtime": "python >=3.10",
+  "runtime": "python minor from config/defaults.json",
   "dependabotEcosystems": ["github-actions", "pip"]
 }

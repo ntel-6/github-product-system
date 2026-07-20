@@ -7,5 +7,8 @@
   "visibility": "{{VISIBILITY}}",
   "license": "{{LICENSE}}",
   "githubOwner": "{{GITHUB_OWNER}}",
-  "pythonPackage": "{{PYTHON_PACKAGE}}"
+  "pythonPackage": "{{PYTHON_PACKAGE}}",
+  "runner": "{{RUNNER}}",
+  "nodeMajor": {{NODE_MAJOR}},
+  "pythonMinor": "{{PYTHON_MINOR}}"
 }

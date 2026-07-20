@@ -12,7 +12,7 @@ function Read-JsonFile {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "JSON file not found: $Path"
     }
-    return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json)
+    return (Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 
 function Write-Utf8NoBom {
@@ -88,7 +88,7 @@ function Copy-RenderedFile {
         [Parameter(Mandatory = $true)][hashtable]$Tokens
     )
 
-    $text = Get-Content -LiteralPath $Source -Raw
+    $text = Get-Content -LiteralPath $Source -Raw -Encoding UTF8
     $rendered = Expand-TemplateText -Text $text -Tokens $Tokens
     Write-Utf8NoBom -Path $Destination -Content $rendered
 }
@@ -153,6 +153,89 @@ function Get-PortableTool {
         if ($candidate) { return $candidate.FullName }
     }
     return $null
+}
+
+function Assert-GitMainBranch {
+    param(
+        [Parameter(Mandatory = $true)][string]$Git,
+        [Parameter(Mandatory = $true)][string]$RepositoryPath
+    )
+
+    $branchOutput = & $Git -C $RepositoryPath symbolic-ref --quiet --short HEAD 2>$null
+    $branchExitCode = $LASTEXITCODE
+    if ($branchExitCode -ne 0) {
+        throw 'Publishing requires an attached main branch; detached HEAD is not allowed.'
+    }
+
+    $branch = ($branchOutput | Out-String).Trim()
+    if ($branch -ne 'main') {
+        throw "Publishing requires branch main; current branch is $branch."
+    }
+}
+
+function Assert-CleanGitWorktree {
+    param(
+        [Parameter(Mandatory = $true)][string]$Git,
+        [Parameter(Mandatory = $true)][string]$RepositoryPath
+    )
+
+    $null = & $Git -C $RepositoryPath rev-parse --verify HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Publishing requires at least one commit on main.'
+    }
+
+    $statusLines = @(& $Git -C $RepositoryPath status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not inspect the Git working tree before publishing.'
+    }
+
+    $changes = @($statusLines | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    if ($changes.Count -gt 0) {
+        $preview = ($changes | Select-Object -First 10) -join '; '
+        throw "Working tree is not clean. Commit or stash every audited change before publishing. Changes: $preview"
+    }
+}
+
+function Resolve-PublishOwner {
+    param(
+        [Parameter(Mandatory = $true)][string]$ManifestOwner,
+        [AllowEmptyString()][string]$RequestedOwner
+    )
+
+    $manifestValue = $ManifestOwner.Trim()
+    if ([string]::IsNullOrWhiteSpace($manifestValue)) {
+        throw 'Product manifest does not define githubOwner.'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($RequestedOwner)) {
+        return $manifestValue
+    }
+
+    $requestedValue = $RequestedOwner.Trim()
+    if ($requestedValue -ne $manifestValue) {
+        throw "Owner mismatch: manifest=$manifestValue, requested=$requestedValue. Bootstrap the product for the intended owner before publishing."
+    }
+    return $manifestValue
+}
+
+function Assert-ValidRuntimeSettings {
+    param(
+        [Parameter(Mandatory = $true)][string]$Runner,
+        [Parameter(Mandatory = $true)][int]$NodeMajor,
+        [Parameter(Mandatory = $true)][string]$PythonMinor
+    )
+
+    if ($Runner -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$') {
+        throw "Invalid runner label: $Runner"
+    }
+    if ($NodeMajor -lt 20 -or $NodeMajor -gt 99) {
+        throw "Invalid Node major version: $NodeMajor"
+    }
+
+    $pythonVersion = $null
+    if (-not [Version]::TryParse($PythonMinor, [ref]$pythonVersion) -or $pythonVersion.Major -ne 3 -or $pythonVersion.Minor -lt 10) {
+        throw "Invalid Python minor version: $PythonMinor. Expected Python 3.10 or newer."
+    }
 }
 
 function Get-TreeContentMap {

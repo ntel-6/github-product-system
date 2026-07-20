@@ -1,5 +1,5 @@
 {
   "name": "node",
-  "runtime": "node >=20",
+  "runtime": "node major from config/defaults.json",
   "dependabotEcosystems": ["github-actions", "npm"]
 }

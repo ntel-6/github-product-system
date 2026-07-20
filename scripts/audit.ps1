@@ -22,6 +22,7 @@ function Add-Check {
 }
 
 $baseline = Read-JsonFile -Path (Join-Path (Get-ProductSystemRoot) 'policy/baseline.json')
+$defaults = Read-JsonFile -Path (Join-Path (Get-ProductSystemRoot) 'config/defaults.json')
 $manifestPath = Join-Path $productRoot '.product-system.json'
 $manifest = $null
 try {
@@ -33,6 +34,21 @@ catch {
 }
 
 if ($manifest) {
+    $runnerProperty = $manifest.PSObject.Properties['runner']
+    $nodeMajorProperty = $manifest.PSObject.Properties['nodeMajor']
+    $pythonMinorProperty = $manifest.PSObject.Properties['pythonMinor']
+    $manifestRunner = if ($runnerProperty) { [string]$runnerProperty.Value } else { [string]$defaults.runner }
+    $manifestNodeMajorRaw = if ($nodeMajorProperty) { $nodeMajorProperty.Value } else { $defaults.nodeMajor }
+    $manifestPythonMinor = if ($pythonMinorProperty) { [string]$pythonMinorProperty.Value } else { [string]$defaults.pythonMinor }
+    try {
+        $manifestNodeMajor = [int]$manifestNodeMajorRaw
+        Assert-ValidRuntimeSettings -Runner $manifestRunner -NodeMajor $manifestNodeMajor -PythonMinor $manifestPythonMinor
+        Add-Check 'PASS' 'manifest.runtime' "Runtime settings are valid: runner=$manifestRunner, node=$manifestNodeMajor, python=$manifestPythonMinor."
+    }
+    catch {
+        Add-Check 'FAIL' 'manifest.runtime' $_.Exception.Message
+    }
+
     if ([int]$manifest.schemaVersion -ne [int]$baseline.schemaVersion) {
         Add-Check 'FAIL' 'manifest.schema' "Unsupported schemaVersion: $($manifest.schemaVersion)"
     }
@@ -74,7 +90,7 @@ $allFiles = @(Get-ChildItem -LiteralPath $productRoot -File -Recurse -Force | Wh
 
 foreach ($jsonFile in @($allFiles | Where-Object { $_.Extension -eq '.json' })) {
     try {
-        $jsonText = Get-Content -LiteralPath $jsonFile.FullName -Raw
+        $jsonText = Get-Content -LiteralPath $jsonFile.FullName -Raw -Encoding UTF8
         if ($jsonFile.Name -eq 'package-lock.json') {
             # Windows PowerShell 5.1 rejects the valid empty property used by npm lockfiles.
             $jsonText = $jsonText -replace '(?m)^(\s*)"":', '$1"__package_root__":'
@@ -105,7 +121,7 @@ foreach ($file in $allFiles) {
 
     if ($textExtensions -contains $extension -or $leaf.StartsWith('.')) {
         try {
-            $content = Get-Content -LiteralPath $file.FullName -Raw
+            $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
             if ($content -match '\{\{[A-Z0-9_]+\}\}' -or $content -match '__PACKAGE__') {
                 Add-Check 'FAIL' 'template.token' "Unresolved template token: $($file.FullName)"
             }
@@ -119,11 +135,14 @@ foreach ($file in $allFiles) {
 $workflowRoot = Join-Path $productRoot '.github/workflows'
 if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
     foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File -Force | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
-        $yaml = Get-Content -LiteralPath $workflow.FullName -Raw
+        $yaml = Get-Content -LiteralPath $workflow.FullName -Raw -Encoding UTF8
         if ($yaml -match '(?m)^\s*pull_request_target\s*:') {
             Add-Check 'FAIL' 'workflow.trigger' "pull_request_target is forbidden: $($workflow.Name)"
         }
-        if ($yaml -notmatch '(?m)^permissions\s*:' -or $yaml -notmatch '(?m)^\s+contents\s*:\s*read\s*$') {
+        if ($yaml -match '(?m)^\s*permissions\s*:\s*write-all\s*(?:#.*)?$') {
+            Add-Check 'FAIL' 'workflow.permissions' "write-all permission is forbidden: $($workflow.Name)"
+        }
+        elseif ($yaml -notmatch '(?m)^permissions\s*:' -or $yaml -notmatch '(?m)^\s+contents\s*:\s*read\s*$') {
             Add-Check 'FAIL' 'workflow.permissions' "Workflow must declare contents: read: $($workflow.Name)"
         }
         elseif ($yaml -match '(?m)^\s+[a-z-]+\s*:\s*write\s*$') {
@@ -157,7 +176,7 @@ if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
 if ($manifest) {
     $dependabotPath = Join-Path $productRoot '.github/dependabot.yml'
     if (Test-Path -LiteralPath $dependabotPath -PathType Leaf) {
-        $dependabot = Get-Content -LiteralPath $dependabotPath -Raw
+        $dependabot = Get-Content -LiteralPath $dependabotPath -Raw -Encoding UTF8
         if ($dependabot -notmatch 'package-ecosystem:\s*github-actions') {
             Add-Check 'FAIL' 'dependabot.actions' 'Dependabot must update GitHub Actions.'
         }

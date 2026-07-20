@@ -4,9 +4,12 @@ param(
     [string]$DisplayName,
     [ValidateSet('generic', 'node', 'python')][string]$Profile = 'generic',
     [string]$Destination,
-    [ValidateSet('private', 'public')][string]$Visibility = 'private',
-    [ValidateSet('none', 'MIT', 'Apache-2.0')][string]$License = 'none',
+    [ValidateSet('private', 'public')][string]$Visibility,
+    [ValidateSet('none', 'MIT', 'Apache-2.0')][string]$License,
     [string]$GithubOwner,
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')][string]$Runner,
+    [ValidateRange(20, 99)][int]$NodeMajor,
+    [ValidatePattern('^[0-9]+\.[0-9]+$')][string]$PythonMinor,
     [switch]$InitGit
 )
 
@@ -16,13 +19,31 @@ Set-StrictMode -Version Latest
 
 $systemRoot = Get-ProductSystemRoot
 $defaults = Read-JsonFile -Path (Join-Path $systemRoot 'config/defaults.json')
-$systemVersion = (Get-Content -LiteralPath (Join-Path $systemRoot 'VERSION') -Raw).Trim()
+$systemVersion = (Get-Content -LiteralPath (Join-Path $systemRoot 'VERSION') -Raw -Encoding UTF8).Trim()
 
 Assert-ValidProductName -Name $Name
 
 if ([string]::IsNullOrWhiteSpace($DisplayName)) { $DisplayName = $Name }
-if ([string]::IsNullOrWhiteSpace($Destination)) { $Destination = Split-Path -Parent $systemRoot }
+if ([string]::IsNullOrWhiteSpace($Destination)) {
+    $defaultDestination = [string]$defaults.destination
+    if ([string]::IsNullOrWhiteSpace($defaultDestination)) { throw 'defaults.destination must not be empty.' }
+    $Destination = if ([System.IO.Path]::IsPathRooted($defaultDestination)) {
+        $defaultDestination
+    }
+    else {
+        Join-Path $systemRoot $defaultDestination
+    }
+}
+if (-not $PSBoundParameters.ContainsKey('Visibility')) { $Visibility = [string]$defaults.visibility }
+if (-not $PSBoundParameters.ContainsKey('License')) { $License = [string]$defaults.license }
 if ([string]::IsNullOrWhiteSpace($GithubOwner)) { $GithubOwner = [string]$defaults.githubOwner }
+if ([string]::IsNullOrWhiteSpace($Runner)) { $Runner = [string]$defaults.runner }
+if (-not $PSBoundParameters.ContainsKey('NodeMajor')) { $NodeMajor = [int]$defaults.nodeMajor }
+if ([string]::IsNullOrWhiteSpace($PythonMinor)) { $PythonMinor = [string]$defaults.pythonMinor }
+
+if (@('private', 'public') -notcontains $Visibility) { throw "Unsupported default visibility: $Visibility" }
+if (@('none', 'MIT', 'Apache-2.0') -notcontains $License) { throw "Unsupported default license: $License" }
+Assert-ValidRuntimeSettings -Runner $Runner -NodeMajor $NodeMajor -PythonMinor $PythonMinor
 if ($Visibility -eq 'public' -and $License -eq 'none') {
     throw 'A public product requires an explicit license: MIT or Apache-2.0.'
 }
@@ -50,6 +71,9 @@ $tokens = @{
     '{{LICENSE}}' = $License
     '{{GITHUB_OWNER}}' = $GithubOwner
     '{{PYTHON_PACKAGE}}' = $pythonPackage
+    '{{RUNNER}}' = $Runner
+    '{{NODE_MAJOR}}' = $NodeMajor.ToString()
+    '{{PYTHON_MINOR}}' = $PythonMinor
     '{{COPYRIGHT_YEAR}}' = [DateTime]::UtcNow.Year.ToString()
     '__PACKAGE__' = $pythonPackage
 }
@@ -111,6 +135,9 @@ try {
         Profile = $Profile
         Visibility = $Visibility
         License = $License
+        Runner = $Runner
+        NodeMajor = $NodeMajor
+        PythonMinor = $PythonMinor
         Audit = 'PASS'
         Git = $gitStatus
     }
